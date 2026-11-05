@@ -1,0 +1,41 @@
+name: Verify dot-folder schema matching
+
+on:
+  push:
+    branches: [verify/schema-dot-folders-1372]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22.13.0
+          cache: npm
+      - run: npm ci
+      - run: npm run build
+      - run: npm run coveralls
+      - name: Generate SARIF
+        if: matrix.os == 'ubuntu-latest'
+        run: npm run lint-ci
+        env:
+          SARIF_ESLINT_IGNORE_SUPPRESSED: 'true'
+      - name: Save verification logs and coverage
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: dot-folder-verification-${{ matrix.os }}
+          path: |
+            coverage/
+            eslint-result.sarif
+          if-no-files-found: ignore
